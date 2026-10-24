@@ -77,7 +77,26 @@ const formatINR=n=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR
 const toast=document.getElementById('toast');
 let toastTimer;
 function showToast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2600)}
-function renderCart(){document.getElementById('bagCount').textContent=cart.reduce((s,x)=>s+x.qty,0);const wrap=document.getElementById('cartItems');wrap.innerHTML='';if(!cart.length){wrap.innerHTML='<p class="cart-note" style="padding:25px 0">Your bag is waiting for something exceptional.</p>'}else{cart.forEach((item,i)=>{const row=document.createElement('div');row.className='cart-item';row.innerHTML='<div>'+item.name+'<small>Qty: '+item.qty+'</small></div><div>'+formatINR(item.price*item.qty)+'<br><button class="icon-btn remove" data-index="'+i+'">Remove</button></div>';wrap.appendChild(row)})}document.getElementById('cartTotal').textContent=formatINR(cart.reduce((s,x)=>s+x.price*x.qty,0));}
+const PRODUCT_API='https://jwellery-2-m5or.onrender.com/api/products';
+async function syncCatalog(){
+  const head=document.querySelector('.section-head');
+  const badge=document.createElement('span');badge.className='text-link';badge.textContent='Loading live collection…';head.appendChild(badge);
+  try{
+    const response=await fetch(PRODUCT_API,{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Catalog request failed');
+    const payload=await response.json();
+    const byName=new Map(payload.products.map(product=>[product.name.toLocaleLowerCase(),product]));
+    document.querySelectorAll('.card').forEach(card=>{
+      const product=byName.get(card.dataset.name.toLocaleLowerCase());if(!product)return;
+      card.dataset.price=String(product.priceINR);card.dataset.stock=product.stockStatus;
+      const price=card.querySelector('.price');if(price)price.textContent=formatINR(product.priceINR);
+      const button=card.querySelector('.add');if(button){button.dataset.bespoke=product.bespoke?'true':'';button.textContent=product.stockStatus==='OUT_OF_STOCK'?(product.bespoke?'Commission bespoke build':'Notify me'):'Add to bag';button.disabled=product.stockStatus==='OUT_OF_STOCK'&&!product.bespoke;}
+      let status=card.querySelector('.stock-status');if(!status){status=document.createElement('div');status.className='stock-status';status.style.cssText='margin-top:9px;font-size:10px;color:#766f64';card.querySelector('.card-bottom').before(status)}
+      status.textContent=product.stockStatus==='IN_STOCK'?'In stock · immediate dispatch':(product.bespoke?'Handcrafted to order · 3–4 weeks':'Currently out of stock');
+    });
+    badge.textContent='Live collection · Render API';
+  }catch(error){badge.textContent='Showing preview collection';console.warn('Live catalog unavailable; showing embedded preview data.',error)}
+}function renderCart(){document.getElementById('bagCount').textContent=cart.reduce((s,x)=>s+x.qty,0);const wrap=document.getElementById('cartItems');wrap.innerHTML='';if(!cart.length){wrap.innerHTML='<p class="cart-note" style="padding:25px 0">Your bag is waiting for something exceptional.</p>'}else{cart.forEach((item,i)=>{const row=document.createElement('div');row.className='cart-item';row.innerHTML='<div>'+item.name+'<small>Qty: '+item.qty+'</small></div><div>'+formatINR(item.price*item.qty)+'<br><button class="icon-btn remove" data-index="'+i+'">Remove</button></div>';wrap.appendChild(row)})}document.getElementById('cartTotal').textContent=formatINR(cart.reduce((s,x)=>s+x.price*x.qty,0));}
 document.querySelectorAll('.add').forEach(btn=>btn.addEventListener('click',()=>{const card=btn.closest('.card');if(btn.dataset.bespoke){openModal('Bespoke commission','This piece is handcrafted to order. In a live store, this would create a concierge enquiry and confirm the production lead time.','Request a consultation');return}const item=cart.find(x=>x.name===card.dataset.name);if(item)item.qty++;else cart.push({name:card.dataset.name,price:Number(card.dataset.price),qty:1});renderCart();showToast(card.dataset.name+' added to your bag.')}));
 document.getElementById('products').addEventListener('click',e=>{if(e.target.classList.contains('remove')){cart.splice(Number(e.target.dataset.index),1);renderCart()}});
 document.querySelectorAll('.filter').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.filter').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const f=btn.dataset.filter;document.querySelectorAll('.card').forEach(card=>{card.style.display=(f==='All'||card.dataset.category===f||card.dataset.metal===f)?'':'none'})}));
@@ -88,7 +107,7 @@ document.getElementById('tryOn').onclick=()=>openModal('Virtual try-on','Live ca
 document.getElementById('modalAction').onclick=()=>{modal.classList.remove('show');showToast('Enquiry preview only — connect a concierge service to submit requests.')};
 document.getElementById('checkoutBtn').onclick=()=>{panel.classList.remove('open');showToast('Checkout is not connected yet. No payment has been taken.')};
 document.getElementById('newsletter').addEventListener('submit',e=>{e.preventDefault();showToast('Thank you — newsletter signup is a demo and was not submitted.');e.target.reset()});
-renderCart();
+renderCart();syncCatalog();
 </script>
 </body>
 </html>
