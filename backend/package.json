@@ -1,0 +1,9 @@
+{
+  "name": "aurelia-fine-jewels-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Starter read-only product API for the Aurelia Fine Jewels demo storefront",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" }
+}
